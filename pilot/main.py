@@ -2,12 +2,11 @@
 from __future__ import print_function, unicode_literals
 
 import sys
-
+import traceback
 from dotenv import load_dotenv
 load_dotenv()
-
+from termcolor import colored
 from helpers.Project import Project
-
 from utils.arguments import get_arguments
 from utils.exit import exit_gpt_pilot
 from logger.logger import logger
@@ -38,6 +37,9 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         exit_gpt_pilot()
     except Exception as e:
+        print(colored('---------- GPT PILOT EXITING WITH ERROR ----------', 'red'))
+        traceback.print_exc()
+        print(colored('--------------------------------------------------', 'red'))
         exit_gpt_pilot()
     finally:
         sys.exit(0)
