@@ -1,8 +1,9 @@
 import re
 import subprocess
+import uuid
 from fabulous.color import yellow, bold
 
-from database.database import get_development_step_from_hash_id, save_development_step, delete_all_subsequent_steps
+from database.database import get_saved_development_step, save_development_step, delete_all_subsequent_steps
 from helpers.files import get_files_content
 from const.common import IGNORE_FOLDERS
 from utils.utils import array_of_objects_to_string
@@ -51,7 +52,7 @@ class AgentConvo:
         # check if we already have the LLM response saved
         if self.agent.__class__.__name__ == 'Developer':
             self.agent.project.llm_req_num += 1
-        development_step = get_development_step_from_hash_id(self.agent.project, prompt_path, prompt_data, self.agent.project.llm_req_num)
+        development_step = get_saved_development_step(self.agent.project)
         if development_step is not None and self.agent.project.skip_steps:
             # if we do, use it
             print(yellow(f'Restoring development step with id {development_step.id}'))
@@ -132,8 +133,11 @@ class AgentConvo:
         self.log_to_user = True
         return accepted_messages
 
-    def save_branch(self, branch_name):
+    def save_branch(self, branch_name=None):
+        if branch_name is None:
+            branch_name = str(uuid.uuid4())
         self.branches[branch_name] = self.messages.copy()
+        return branch_name
 
     def load_branch(self, branch_name, reload_files=True):
         self.messages = self.branches[branch_name].copy()

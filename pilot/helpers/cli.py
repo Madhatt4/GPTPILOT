@@ -108,6 +108,11 @@ def execute_command(project, command, timeout=None, force=False):
             'If yes, just press ENTER'
         )
 
+        if answer == 'no':
+            return '', 'DONE'
+        elif answer == 'skip':
+            return '', 'DONE'
+
 
     # TODO when a shell built-in commands (like cd or source) is executed, the output is not captured properly - this will need to be changed at some point
     if "cd " in command or "source " in command:
@@ -120,7 +125,7 @@ def execute_command(project, command, timeout=None, force=False):
         # if we do, use it
         project.checkpoints['last_command_run'] = command_run
         print(yellow(f'Restoring command run response id {command_run.id}:\n```\n{command_run.cli_response}```'))
-        return command_run.cli_response
+        return command_run.cli_response, None
 
     return_value = None
 
@@ -196,7 +201,7 @@ def execute_command(project, command, timeout=None, force=False):
 
     command_run = save_command_run(project, command, return_value)
 
-    return return_value
+    return return_value, None
 
 def build_directory_tree(path, prefix="", ignore=None, is_last=False, files=None, add_descriptions=False):
     """Build the directory tree structure in tree-like format.
@@ -247,9 +252,10 @@ def execute_command_and_check_cli_response(command, timeout, convo):
     Returns:
         tuple: A tuple containing the CLI response and the agent's response.
     """
-    cli_response = execute_command(convo.agent.project, command, timeout)
-    response = convo.send_message('dev_ops/ran_command.prompt',
-        { 'cli_response': cli_response, 'command': command })
+    cli_response, response = execute_command(convo.agent.project, command, timeout)
+    if response is None:
+        response = convo.send_message('dev_ops/ran_command.prompt',
+            { 'cli_response': cli_response, 'command': command })
     return cli_response, response
 
 def run_command_until_success(command, timeout, convo, additional_message=None, force=False, return_cli_response=False, is_root_task=False):
@@ -263,9 +269,10 @@ def run_command_until_success(command, timeout, convo, additional_message=None, 
         additional_message (str, optional): Additional message to include in the response.
         force (bool, optional): Whether to execute the command without confirmation. Default is False.
     """
-    cli_response = execute_command(convo.agent.project, command, timeout, force)
-    response = convo.send_message('dev_ops/ran_command.prompt',
-        {'cli_response': cli_response, 'command': command, 'additional_message': additional_message})
+    cli_response, response = execute_command(convo.agent.project, command, timeout, force)
+    if response is None:
+        response = convo.send_message('dev_ops/ran_command.prompt',
+            {'cli_response': cli_response, 'command': command, 'additional_message': additional_message})
 
     if response != 'DONE':
         print(red(f'Got incorrect CLI response:'))

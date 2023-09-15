@@ -4,13 +4,14 @@ import builtins
 import json
 
 import sys
-
+import traceback
 from dotenv import load_dotenv
 load_dotenv()
 
 from helpers.ipc import IPCClient
 from const.ipc import MESSAGE_TYPE
 from utils.utils import json_serial
+from fabulous.color import red
 
 from helpers.Project import Project
 
@@ -86,6 +87,9 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         exit_gpt_pilot()
     except Exception as e:
+        print(red('---------- GPT PILOT EXITING WITH ERROR ----------'))
+        traceback.print_exc()
+        print(red('--------------------------------------------------'))
         exit_gpt_pilot()
     finally:
         sys.exit(0)
