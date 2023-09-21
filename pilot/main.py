@@ -1,7 +1,7 @@
 # main.py
 from __future__ import print_function, unicode_literals
 import builtins
-import json
+import os
 
 import sys
 import traceback
@@ -27,7 +27,7 @@ def init():
 
     # Check if the tables exist, if not, create them
     if not tables_exist():
-        create_tables()
+      create_tables()
 
     arguments = get_arguments()
 
@@ -78,6 +78,9 @@ if __name__ == "__main__":
     try:
         args = init()
         builtins.print, ipc_client_instance = get_custom_print(args)
+        if '--api-key' in args:
+          os.environ["OPENAI_API_KEY"] = args['--api-key']
+
         if '--get-created-apps-with-steps' in args:
             print({ 'db_data': get_created_apps_with_steps() }, type='info')
         else:
