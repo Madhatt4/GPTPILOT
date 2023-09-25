@@ -17,7 +17,7 @@ from helpers.Project import Project
 from utils.arguments import get_arguments
 from utils.exit import exit_gpt_pilot
 from logger.logger import logger
-from database.database import database_exists, create_database, tables_exist, create_tables, get_created_apps_with_steps
+from database.database import database_exists, create_database, tables_exist, create_tables, get_created_apps_with_steps, get_created_apps
 
 
 def init():
@@ -93,6 +93,6 @@ if __name__ == "__main__":
         print(red('---------- GPT PILOT EXITING WITH ERROR ----------'))
         traceback.print_exc()
         print(red('--------------------------------------------------'))
-        exit_gpt_pilot()
+        exit_gpt_pilot(False)
     finally:
         sys.exit(0)
