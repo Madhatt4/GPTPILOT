@@ -30,7 +30,7 @@ def styled_text(project, question, ignore_user_input_count=False):
             print(yellow(bold(f'{user_input.user_input}')))
             return user_input.user_input
 
-    if project.ipc_client_instance is None or project.ipc_client_instance.client is None:
+    if project.ipc_client_instance is None or project.ipc_client_instance.websocket is None:
         config = {
             'style': custom_style,
         }

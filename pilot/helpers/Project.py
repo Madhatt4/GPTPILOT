@@ -1,3 +1,5 @@
+
+#Project.py
 import json
 
 from fabulous.color import bold, green, yellow, cyan, white
@@ -77,19 +79,13 @@ class Project:
         Start the project.
         """
         self.project_manager = ProductOwner(self)
-        print(json.dumps({
-            "project_stage": "project_description"
-        }), type='info')
+        print({"project_stage": "project_description"}, 'info')
         self.project_manager.get_project_description()
-        print(json.dumps({
-            "project_stage": "user_stories"
-        }), type='info')
+        print({"project_stage": "user_stories"}, 'info')
         self.user_stories = self.project_manager.get_user_stories()
         # self.user_tasks = self.project_manager.get_user_tasks()
 
-        print(json.dumps({
-            "project_stage": "architecture"
-        }), type='info')
+        print({ "project_stage": "architecture" }, 'info')
         self.architect = Architect(self)
         self.architecture = self.architect.get_architecture()
 
@@ -131,12 +127,12 @@ class Project:
         self.developer = Developer(self)
         print(json.dumps({
             "project_stage": "environment_setup"
-        }), type='info')
+        }), 'info')
         self.developer.set_up_environment()
 
         print(json.dumps({
             "project_stage": "coding"
-        }), type='info')
+        }), 'info')
         self.developer.start_coding()
 
     def get_directory_tree(self, with_descriptions=False):
@@ -329,13 +325,13 @@ class Project:
                 else:
                     raise e
 
-    def log(self, text, message_type):
-        if self.ipc_client_instance is None or self.ipc_client_instance.client is None:
-            print(text)
-        else:
-            self.ipc_client_instance.send({
-                'type': MESSAGE_TYPE[message_type],
-                'content': str(text),
-            })
-            if message_type == MESSAGE_TYPE['user_input_request']:
-                return self.ipc_client_instance.listen()
+    # def log(self, text, message_type):
+    #     if self.ipc_client_instance is None or self.ipc_client_instance.client is None:
+    #         print(text)
+    #     else:
+    #         self.ipc_client_instance.send({
+    #             'type': MESSAGE_TYPE[message_type],
+    #             'content': str(text),
+    #         })
+    #         if message_type == MESSAGE_TYPE['user_input_request']:
+    #             return self.ipc_client_instance.listen()

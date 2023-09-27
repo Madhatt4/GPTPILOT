@@ -1,45 +1,38 @@
-# ipc.py
-import socket
+#ipc.py
 import json
 import time
+import asyncio
+import websockets
 
 from utils.utils import json_serial
 
 class IPCClient:
     def __init__(self, port):
+        self.uri = f"ws://localhost:{port}"
         self.ready = False
-        client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        print("Connecting to the external process...")
-        try:
-            client.connect(('localhost', int(port)))
-            self.client = client
+        self.websocket = None
+
+    async def connect(self):
+        async with websockets.connect(self.uri) as websocket:
+            print("Connecting to the external process...")
+            self.websocket = websocket
             print("Connected!")
-        except ConnectionRefusedError:
-            self.client = None
-            print("Connection refused, make sure you started the external process")
 
-    def handle_request(self, message_content):
-        print(f"Received request from the external process: {message_content}")
-        return message_content  # For demonstration, we're just echoing back the content
-
-    def listen(self):
-        if self.client is None:
+    async def listen(self):
+        if not self.websocket:
             print("Not connected to the external process!")
             return
 
-        while True:
-            data = self.client.recv(4096)
+        async for data in self.websocket:
             message = json.loads(data)
-
             if message['type'] == 'response':
-                # self.client.close()
                 return message['content']
 
-    def send(self, data):
-        serialized_data = json.dumps(data, default=json_serial)
-        print(serialized_data, type='local')
+    async def send(self, data):
+        if not self.websocket:
+            print("Not connected to the external process!")
+            return
 
-        data_length = len(serialized_data)
-        self.client.sendall(data_length.to_bytes(4, byteorder='big'))
-        self.client.sendall(serialized_data.encode('utf-8'))
-        time.sleep(0.1)
+        serialized_data = json.dumps(data, default=json_serial)
+        await self.websocket.send(serialized_data)
+        print(serialized_data)

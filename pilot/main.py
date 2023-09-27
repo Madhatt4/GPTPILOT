@@ -1,7 +1,7 @@
-# main.py
 from __future__ import print_function, unicode_literals
 import builtins
-import os
+import json
+import asyncio
 
 import sys
 import traceback
@@ -17,7 +17,7 @@ from helpers.Project import Project
 from utils.arguments import get_arguments
 from utils.exit import exit_gpt_pilot
 from logger.logger import logger
-from database.database import database_exists, create_database, tables_exist, create_tables, get_created_apps_with_steps, get_created_apps
+from database.database import database_exists, create_database, tables_exist, create_tables, get_created_apps_with_steps
 
 
 def init():
@@ -27,7 +27,7 @@ def init():
 
     # Check if the tables exist, if not, create them
     if not tables_exist():
-      create_tables()
+        create_tables()
 
     arguments = get_arguments()
 
@@ -35,14 +35,10 @@ def init():
 
     return arguments
 
-
-
-
 def get_custom_print(args):
     built_in_print = builtins.print
 
     def print_to_external_process(*args, **kwargs):
-        # message = " ".join(map(str, args))
         message = args[0]
 
         if 'type' not in kwargs:
@@ -51,9 +47,10 @@ def get_custom_print(args):
             local_print(*args, **kwargs)
             return
 
+        message_with_type = f"[{kwargs['type']}] {message}"  # Include the type as a prefix
         ipc_client_instance.send({
             'type': MESSAGE_TYPE[kwargs['type']],
-            'content': message,
+            'content': message_with_type,
         })
         if kwargs['type'] == MESSAGE_TYPE['user_input_request']:
             return ipc_client_instance.listen()
@@ -77,22 +74,20 @@ def get_custom_print(args):
 if __name__ == "__main__":
     try:
         args = init()
-        builtins.print, ipc_client_instance = get_custom_print(args)
-        if '--api-key' in args:
-          os.environ["OPENAI_API_KEY"] = args['--api-key']
-
+        custom_print, ipc_client_instance = get_custom_print(args)
         if '--get-created-apps-with-steps' in args:
             print({ 'db_data': get_created_apps_with_steps() }, type='info')
         else:
-            # TODO get checkpoint from database and fill the project with it
+            if ipc_client_instance:
+              asyncio.get_event_loop().run_until_complete(ipc_client_instance.connect())
             project = Project(args, ipc_client_instance=ipc_client_instance)
             project.start()
     except KeyboardInterrupt:
         exit_gpt_pilot()
     except Exception as e:
-        print(red('---------- GPT PILOT EXITING WITH ERROR ----------'))
+        print(red(e))
         traceback.print_exc()
         print(red('--------------------------------------------------'))
-        exit_gpt_pilot(False)
+        exit_gpt_pilot()
     finally:
         sys.exit(0)
