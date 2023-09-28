@@ -1,3 +1,5 @@
+from enum import Enum
+
 APP_TYPES = ['Web App', 'Script', 'Mobile App', 'Chrome Extension']
 ROLES = {
     'product_owner': ['project_description', 'user_stories', 'user_tasks'],
@@ -29,3 +31,9 @@ IGNORE_FOLDERS = [
 ]
 
 PROMPT_DATA_TO_IGNORE = {'directory_tree', 'name'}
+
+
+class UserInputs(Enum):
+    CONTINUE = 'continue'
+    DONE = 'done'
+    PRESSED_ENTER = ''

@@ -173,6 +173,8 @@ def retry_on_exception(func):
                 # spinner_stop(spinner)
                 print(err_str)
 
+                # TODO: this should use `ask_user()` but need to provide `project`
+                # print('If yes, just press ENTER. Otherwise, type "no"', type='hint')
                 user_message = questionary.text(
                     "Do you want to try make the same request again? If yes, just press ENTER. Otherwise, type 'no'.",
                     style=questionary.Style([

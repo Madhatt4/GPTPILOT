@@ -20,7 +20,7 @@ def styled_select(*args, **kwargs):
 
 
 def styled_text(project, question, ignore_user_input_count=False):
-    if not ignore_user_input_count:
+    if project is not None and not ignore_user_input_count:
         project.user_inputs_count += 1
         user_input = get_saved_user_input(project, question)
         if user_input is not None and user_input.user_input is not None and project.skip_steps:

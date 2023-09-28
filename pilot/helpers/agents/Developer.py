@@ -1,7 +1,8 @@
 import uuid
-from utils.style import yellow, green, red, blue, white, green_bold, yellow_bold, red_bold, blue_bold, white_bold
+from utils.style import green, red, green_bold, yellow_bold, red_bold, blue_bold, white_bold
 from helpers.exceptions.TokenLimitError import TokenLimitError
 from const.code_execution import MAX_COMMAND_DEBUG_TRIES
+from const.common import UserInputs
 from helpers.exceptions.TooDeepRecursionError import TooDeepRecursionError
 from helpers.Debugger import Debugger
 from utils.questionary import styled_text
@@ -14,6 +15,7 @@ from utils.utils import should_execute_step, array_of_objects_to_string, generat
 from helpers.cli import run_command_until_success, execute_command_and_check_cli_response
 from const.function_calls import FILTER_OS_TECHNOLOGIES, EXECUTE_COMMANDS, GET_TEST_TYPE, IMPLEMENT_TASK
 from database.database import save_progress, get_progress_steps
+from prompts.prompts import ask_user
 from utils.utils import get_os_info
 
 ENVIRONMENT_SETUP_STEP = 'environment_setup'
@@ -136,8 +138,13 @@ class Developer(Agent):
 
         if development_task is not None:
             convo.remove_last_x_messages(2)
+            # Note: The prompt includes allows the LLM to reply:
+            #       There is nothing specific to test for this task so you can write "continue"'
             detailed_user_review_goal = convo.send_message('development/define_user_review_goal.prompt', {})
             convo.remove_last_x_messages(2)
+        else:
+            # TODO: should this be `None` or 'continue'?
+            detailed_user_review_goal = None
 
         try:
             if continue_development:
@@ -189,14 +196,18 @@ class Developer(Agent):
                 return s
         # TODO end
 
-        answer = ''
-        while answer != 'continue':
-            print(red_bold(f'\n----------------------------- I need your help ------------------------------'))
+        answer = None
+        while answer != UserInputs.CONTINUE and answer != UserInputs.PRESSED_ENTER:
+            # TODO: The "I need your help" needs to make sense on CLI and in IDE.
+            # TODO: User needs to be able to abort or change direction.
+            print(red_bold(f'\n-----------------------------------------------------------------------------'))
             print(extract_substring(str(help_description)))
             print(red_bold(f'\n-----------------------------------------------------------------------------'))
-            answer = styled_text(
+            answer = ask_user(
                 self.project,
-                'Once you\'re done, type "continue"?'
+                'I need your help.',
+                require_some_input=False,
+                hint=f'Once you\'re done, type "{UserInputs.CONTINUE}"?'
             )
 
         return { "success": True, "user_input": answer }
@@ -257,8 +268,10 @@ class Developer(Agent):
     def continue_development(self, iteration_convo, last_branch_name, continue_description=''):
         while True:
             iteration_convo.load_branch(last_branch_name)
+            # TODO: this is overly complicated and won't render very well in the IDE
             user_description = ('Here is a description of what should be working: \n\n' + blue_bold(continue_description) + '\n') if continue_description != '' else ''
-            user_description = 'Can you check if the app works please? ' + user_description + '\nIf you want to run the app, ' + yellow_bold('just type "r" and press ENTER and that will run `' + self.run_command + '`')
+            user_description = 'Can you check if the app works please? ' + user_description + \
+                               '\nIf you want to run the app, ' + yellow_bold('just type "r" and press ENTER and that will run `' + self.run_command + '`')
             # continue_description = ''
             response = self.project.ask_for_human_intervention(
                 user_description,

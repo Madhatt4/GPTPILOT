@@ -1,7 +1,7 @@
 import json
 
-from utils.style import green_bold, yellow_bold, cyan, white_bold
-from const.common import IGNORE_FOLDERS, STEPS
+from utils.style import yellow_bold, cyan, white_bold
+from const.common import IGNORE_FOLDERS, STEPS, UserInputs
 from database.database import delete_unconnected_steps_from, delete_all_app_development_data
 from const.ipc import MESSAGE_TYPE
 from helpers.exceptions.TokenLimitError import TokenLimitError
@@ -301,7 +301,9 @@ class Project:
         if convo is not None:
             reset_branch_id = convo.save_branch()
 
-        while answer != 'continue':
+        # TODO: should this be "...or press Enter to continue"?
+        while answer != UserInputs.CONTINUE and answer != UserInputs.PRESSED_ENTER:
+            # TODO: How does this render in the IDE?
             print(yellow_bold(message))
             if description is not None:
                 print('\n' + '-'*100 + '\n' +
@@ -310,7 +312,7 @@ class Project:
 
             answer = styled_text(
                 self,
-                'If something is wrong, tell me or type "continue" to continue.',
+                f'If something is wrong, tell me or type "{UserInputs.CONTINUE}" to continue.',
             )
 
             try:
