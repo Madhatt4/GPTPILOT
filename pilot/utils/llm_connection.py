@@ -176,7 +176,7 @@ def retry_on_exception(func):
                     if e.msg.startswith('Expecting') or e.msg == 'Unterminated string starting at':
                         if e.msg == 'Expecting value' and len(e.doc) > e.pos:
                             # Note: clean_json_response() should heal True/False boolean values
-                            err_str = re.split(r'[},\\n]', e.doc[e.pos:])[0]
+                            err_str = re.split(r'[},\n]', e.doc[e.pos:])[0]
                             err_str = f'Invalid value: `{err_str}`'
                         else:
                             # if e.msg == 'Unterminated string starting at' or len(e.doc) == e.pos:
@@ -242,6 +242,8 @@ def retry_on_exception(func):
                 # https://github.com/Pythagora-io/gpt-pilot/issues/122
                 if user_message != '':
                     return {}
+
+                del args[0]['function_error_count']
 
     return wrapper
 
@@ -430,7 +432,7 @@ def assert_json_response(response: str, or_fail=True) -> bool:
         return True
     elif or_fail:
         logger.error(f'LLM did not respond with JSON: {response}')
-        raise ValueError('LLM did not respond with JSON')
+        raise json.JSONDecodeError('Your response MUST be a JSON object', response, 0)
     else:
         return False
 

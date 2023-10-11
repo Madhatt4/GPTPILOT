@@ -100,10 +100,27 @@ class TestRetryOnException:
             json_string = json_responses.pop(0)
             if 'function_buffer' in data:
                 json_string = data['function_buffer'] + json_string
+
+            assert_json_response(json_string)
             assert_json_schema(json_string, [self.function])
             return json_string
 
         return retry_on_exception(retryable_assert_json_schema), args
+
+    def test_non_json(self, mock_styled_text):
+        # Given non-JSON
+        wrapper, args = self._create_wrapped_function(['type: command', 'type: command', 'type: command',
+                                                       '{"foo": "bar"}'])
+
+        # When
+        response = wrapper(*args)
+
+        # Then should tell the LLM the JSON response is incomplete and to continue
+        # 'Unterminated string starting at'
+        assert response == '{"foo": "bar"}'
+        assert 'Your response MUST be a JSON object' in args[0]['function_error']
+        # And the user should not need to be notified
+        assert mock_styled_text.call_count == 1
 
     def test_incomplete_value_string(self, mock_styled_text):
         # Given incomplete JSON
