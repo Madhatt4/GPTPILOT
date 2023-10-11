@@ -88,7 +88,7 @@ class Developer(Agent):
             # TODO end
 
     def step_command_run(self, convo, step, i):
-        logger.info('Running command: %s', step['command'])
+        logger.info('Running command: %s', step)
         # TODO fix this - the problem is in GPT response that sometimes doesn't return the correct JSON structure
         if isinstance(step['command'], str):
             data = step
