@@ -4,7 +4,7 @@ import re
 from typing import Tuple
 from utils.style import  yellow_bold, cyan, white_bold
 from const.common import IGNORE_FOLDERS, STEPS
-from database.database import delete_unconnected_steps_from, delete_all_app_development_data
+from database.database import delete_unconnected_steps_from, delete_all_app_development_data, save_file_snapshot
 from const.ipc import MESSAGE_TYPE
 from prompts.prompts import ask_user
 from helpers.exceptions.TokenLimitError import TokenLimitError
@@ -269,22 +269,7 @@ class Project:
 
         for file in files:
             print(cyan(f'Saving file {(file["path"])}/{file["name"]}'))
-            # TODO this can be optimized so we don't go to the db each time
-            file_in_db, created = File.get_or_create(
-                app=self.app,
-                name=file['name'],
-                path=file['path'],
-                full_path=file['full_path'],
-            )
-
-            file_snapshot, created = FileSnapshot.get_or_create(
-                app=self.app,
-                development_step=development_step,
-                file=file_in_db,
-                defaults={'content': file.get('content', '')}
-            )
-            file_snapshot.content = content = file['content']
-            file_snapshot.save()
+            save_file_snapshot(self, file['path'], file['name'], file['full_path'], development_step, file.get('content', ''))
 
     def restore_files(self, development_step_id):
         development_step = DevelopmentSteps.get(DevelopmentSteps.id == development_step_id)
@@ -292,7 +277,8 @@ class Project:
 
         clear_directory(self.root_path, IGNORE_FOLDERS)
         for file_snapshot in file_snapshots:
-            update_file(file_snapshot.file.full_path, file_snapshot.content);
+            # TODO this can be optimized so we don't go to the db each time
+            update_file(file_snapshot.file.full_path, file_snapshot.content)
 
     def delete_all_steps_except_current_branch(self):
         delete_unconnected_steps_from(self.checkpoints['last_development_step'], 'previous_step')
