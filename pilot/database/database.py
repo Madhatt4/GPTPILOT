@@ -414,7 +414,32 @@ def delete_unconnected_steps_from(step, previous_step_field_name):
         unconnected_step.delete_instance()
 
 
+def save_file_snapshot(project, path: str, name: str, full_path: str, development_step: str, content):
+    logger.info(f'Saving file {path}/{name}')
+    try:
+        file_in_db, created = File.get_or_create(
+            app=project.app,
+            name=name,
+            path=path,
+            full_path=full_path,
+        )
+
+        file_snapshot, created = FileSnapshot.get_or_create(
+            app=project.app,
+            development_step=development_step,
+            file=file_in_db,
+            defaults={'content': content}
+        )
+        file_snapshot.content = content
+        file_snapshot.save()
+    except IntegrityError as e:
+        logger.warn('Failed to save the file record to DB: %s', e)
+        pass
+
+
 def save_file_description(project, path, name, description):
+    print(f'save_file_description: {project.app}, {path}, {name}')
+    logger.info(f'save_file_description: {project.app}, {path}, {name}')
     (File.insert(app=project.app, path=path, name=name, description=description)
      .on_conflict(
         conflict_target=[File.app, File.name, File.path],
