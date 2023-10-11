@@ -4,6 +4,8 @@ import pytest
 from unittest.mock import patch, MagicMock
 from helpers.Project import Project
 
+test_root = os.path.join(os.path.dirname(__file__), '../../workspace/gpt-pilot-test').replace('\\', '/')
+
 
 def create_project():
     project = Project({
@@ -15,7 +17,7 @@ def create_project():
         architecture=[],
         user_stories=[]
     )
-    project.set_root_path('/temp/gpt-pilot-test')
+    project.set_root_path(test_root)
     project.app = 'test'
     return project
 
