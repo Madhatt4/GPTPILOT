@@ -205,7 +205,7 @@ class Project:
                 name = os.path.basename(file_path)
                 relative_path, full_path = self.get_full_file_path(file_path, name)
                 file_content = open(full_path, 'r').read()
-            except:
+            except OSError:
                 file_content = ''
 
             files_with_content.append({
