@@ -462,6 +462,7 @@ class TestLlmConnection:
         ('OPENROUTER', 'google/palm-2-chat-bison'),          # role: user/system
         ('OPENROUTER', 'google/palm-2-codechat-bison'),
         ('OPENROUTER', 'anthropic/claude-2'),              # role: user, is_llama
+        ('OPENROUTER', 'mistralai/mistral-7b-instruct'),
     ])
     def test_chat_completion_Architect(self, endpoint, model, monkeypatch):
         # Given
