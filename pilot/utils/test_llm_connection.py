@@ -8,6 +8,7 @@ from jsonschema import ValidationError
 from const.function_calls import ARCHITECTURE, DEVELOPMENT_PLAN
 from helpers.AgentConvo import AgentConvo
 from helpers.Project import Project
+from helpers.agents.ProductOwner import ProductOwner
 from helpers.agents.Architect import Architect
 from helpers.agents.TechLead import TechLead
 from utils.function_calling import parse_agent_response, FunctionType
@@ -438,6 +439,36 @@ class TestLlmConnection:
 
             # Then
             assert response == {'text': '{\n  "foo": "bar",\n  "prompt": "Hello",\n  "choices": []\n}'}
+
+    @pytest.mark.uses_tokens
+    @pytest.mark.parametrize('endpoint, model', [
+        # ('OPENAI', 'gpt-4'),
+        ('OPENAI', 'gpt-3.5-turbo'),
+        # ('OPENROUTER', 'meta-llama/codellama-34b-instruct'),
+        # ('OPENROUTER', 'google/palm-2-chat-bison'),
+        # ('OPENROUTER', 'google/palm-2-codechat-bison'),
+        # ('OPENROUTER', 'anthropic/claude-2'),
+        # ('OPENROUTER', 'mistralai/mistral-7b-instruct')
+    ])
+    def test_chat_completion_ProductOwner(self, endpoint, model, monkeypatch):
+        # Given
+        monkeypatch.setenv('ENDPOINT', endpoint)
+        monkeypatch.setenv('MODEL_NAME', model)
+
+        agent = ProductOwner(project)
+        convo = AgentConvo(agent)
+
+        convo.construct_and_add_message_from_prompt('high_level_questions/specs.prompt', {
+            'app_type': 'web app',
+            'name': 'chat app',
+            'prompt': 'A simple chat app with real-time communication',
+        })
+
+        # When
+        response = create_gpt_chat_completion(convo.messages, '', project)
+
+        # Then should only contain one question - I'm looking at you, gpt-3.5-turbo
+        assert response['text'].count('?') == 1
 
 
     @pytest.mark.uses_tokens
