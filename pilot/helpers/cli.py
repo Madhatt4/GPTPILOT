@@ -8,7 +8,7 @@ import platform
 from typing import Dict, Union
 
 from logger.logger import logger
-from utils.style import yellow, green, red, yellow_bold, white_bold
+from utils.style import color_yellow, color_green, color_red, color_yellow_bold, color_white_bold
 from database.database import get_saved_command_run, save_command_run
 from helpers.exceptions.TooDeepRecursionError import TooDeepRecursionError
 from helpers.exceptions.TokenLimitError import TokenLimitError
@@ -18,7 +18,7 @@ from const.code_execution import MIN_COMMAND_RUN_TIME, MAX_COMMAND_RUN_TIME, MAX
 interrupted = False
 
 running_processes: Dict[str, tuple[str, int]] = {}
-"""Holds a list of (command, process ID)s, mapped to the `process_name` provided in the call to `execute_command()`."""
+"""Holds a list of (command, process ID)s, mapped to the `command_id` provided in the call to `execute_command()`."""
 
 
 def enqueue_output(out, q):
@@ -72,14 +72,14 @@ def run_command(command, root_path, q_stdout, q_stderr) -> subprocess.Popen:
     return process
 
 
-def terminate_named_process(process_name: str) -> None:
-    if process_name in running_processes:
-        terminate_process(running_processes[process_name][1], process_name)
+def terminate_named_process(command_id: str) -> None:
+    if command_id in running_processes:
+        terminate_process(running_processes[command_id][1], command_id)
 
 
 def terminate_running_processes():
-    for process_name in list(running_processes.keys()):
-        terminate_process(running_processes[process_name][1], process_name)
+    for command_id in list(running_processes.keys()):
+        terminate_process(running_processes[command_id][1], command_id)
 
 
 def terminate_process(pid: int, name=None) -> None:
@@ -99,12 +99,12 @@ def terminate_process(pid: int, name=None) -> None:
         except OSError as e:
             logger.error(f'Error while terminating process: {e}')
 
-    for process_name in list(running_processes.keys()):
-        if running_processes[process_name][1] == pid:
-            del running_processes[process_name]
+    for command_id in list(running_processes.keys()):
+        if running_processes[command_id][1] == pid:
+            del running_processes[command_id]
 
 
-def execute_command(project, command, timeout=None, success_message=None, process_name: str = None, force=False) \
+def execute_command(project, command, timeout=None, success_message=None, command_id: str = None, force=False) \
         -> (str, str, int):
     """
     Execute a command and capture its output.
@@ -114,8 +114,7 @@ def execute_command(project, command, timeout=None, success_message=None, proces
         command (str): The command to run.
         timeout (int, optional): The maximum execution time in milliseconds. Default is None.
         success_message: A message to look for in the output of the command to determine if successful or not.
-        process_name (str, optional): A name for the process.
-                            If `timeout` is not provided, can be used to terminate the process.
+        command_id (str, optional): A unique identifier assigned by the LLM, can be used to terminate the process.
         force (bool, optional): Whether to execute the command without confirmation. Default is False.
 
     Returns:
@@ -135,8 +134,8 @@ def execute_command(project, command, timeout=None, success_message=None, proces
             timeout = min(max(timeout, MIN_COMMAND_RUN_TIME), MAX_COMMAND_RUN_TIME)
 
     if not force:
-        print(yellow_bold('\n--------- EXECUTE COMMAND ----------'))
-        question = f'Can I execute the command: `{yellow_bold(command)}`'
+        print(color_yellow_bold('\n--------- EXECUTE COMMAND ----------'))
+        question = f'Can I execute the command: `{color_yellow_bold(command)}`'
         if timeout is not None:
             question += f' with {timeout}ms timeout?'
         else:
@@ -168,7 +167,7 @@ def execute_command(project, command, timeout=None, success_message=None, proces
     if command_run is not None and project.skip_steps:
         # if we do, use it
         project.checkpoints['last_command_run'] = command_run
-        print(yellow(f'Restoring command run response id {command_run.id}:\n```\n{command_run.cli_response}```'))
+        print(color_yellow(f'Restoring command run response id {command_run.id}:\n```\n{command_run.cli_response}```'))
         return command_run.cli_response, None, None
 
     return_value = None
@@ -178,9 +177,9 @@ def execute_command(project, command, timeout=None, success_message=None, proces
     q = queue.Queue()
     process = run_command(command, project.root_path, q, q_stderr)
 
-    if process_name is not None:
-        terminate_named_process(process_name)
-        running_processes[process_name] = (command, process.pid)
+    if command_id is not None:
+        terminate_named_process(command_id)
+        running_processes[command_id] = (command, process.pid)
 
     output = ''
     stderr_output = ''
@@ -196,24 +195,25 @@ def execute_command(project, command, timeout=None, success_message=None, proces
             elapsed_time = time.time() - start_time
             # if timeout is not None:
             #     # TODO: print to IPC using a different message type so VS Code can ignore it or update the previous value
-            #     print(white_bold(f'\rt: {round(elapsed_time * 1000)}ms : '), end='', flush=True)
+            #     print(color_white_bold(f'\rt: {round(elapsed_time * 1000)}ms : '), end='', flush=True)
 
             # Check if process has finished
             if process.poll() is not None:
+                logger.info('process exited with return code: %d', process.returncode)
                 # Get remaining lines from the queue
                 time.sleep(0.1)  # TODO this shouldn't be used
                 while not q.empty():
                     output_line = q.get_nowait()
                     if output_line not in output:
-                        print(green('CLI OUTPUT:') + output_line, end='')
+                        print(color_green('CLI OUTPUT:') + output_line, end='')
                         logger.info('CLI OUTPUT: ' + output_line)
                         output += output_line
                 break
 
             # If timeout is reached, kill the process
             if timeout is not None and elapsed_time * 1000 > timeout:
-                if process_name is not None:
-                    logger.info(f'Process "{process_name}" running after timeout as pid: {process.pid}')
+                if command_id is not None:
+                    logger.info(f'Process "{command_id}" running after timeout as pid: {process.pid}')
                     break
 
                 raise TimeoutError("Command exceeded the specified timeout.")
@@ -227,7 +227,7 @@ def execute_command(project, command, timeout=None, success_message=None, proces
 
             if line:
                 output += line
-                print(green('CLI OUTPUT:') + line, end='')
+                print(color_green('CLI OUTPUT:') + line, end='')
                 logger.info('CLI OUTPUT: ' + line)
                 if success_message is not None and success_message in line:
                     logger.info('Success message found: %s', success_message)
@@ -242,7 +242,7 @@ def execute_command(project, command, timeout=None, success_message=None, proces
 
             if stderr_line:
                 stderr_output += stderr_line
-                print(red('CLI ERROR:') + stderr_line, end='')  # Print with different color for distinction
+                print(color_red('CLI ERROR:') + stderr_line, end='')  # Print with different color for distinction
                 logger.error('CLI ERROR: ' + stderr_line)
 
     except (KeyboardInterrupt, TimeoutError) as e:
@@ -274,7 +274,53 @@ def execute_command(project, command, timeout=None, success_message=None, proces
     return return_value, 'DONE' if was_success else None, process.returncode
 
 
-def build_directory_tree(path, prefix="", ignore=None, is_last=False, files=None, add_descriptions=False):
+def build_directory_tree(path, prefix='', is_root=True, ignore=None):
+    """Build the directory tree structure in a simplified format.
+
+    Args:
+    - path: The starting directory path.
+    - prefix: Prefix for the current item, used for recursion.
+    - is_root: Flag to indicate if the current item is the root directory.
+    - ignore: a list of directories to ignore
+
+    Returns:
+    - A string representation of the directory tree.
+    """
+    output = ""
+    indent = '  '
+
+    if os.path.isdir(path):
+        dir_name = os.path.basename(path)
+        if is_root:
+            output += '/'
+        else:
+            output += f'{prefix}/{dir_name}'
+
+        # List items in the directory
+        items = os.listdir(path)
+        dirs = [item for item in items if os.path.isdir(os.path.join(path, item)) and item not in ignore]
+        files = [item for item in items if os.path.isfile(os.path.join(path, item))]
+        dirs.sort()
+        files.sort()
+
+        if dirs:
+            output += '\n'
+            for index, dir_item in enumerate(dirs):
+                item_path = os.path.join(path, dir_item)
+                output += build_directory_tree(item_path, prefix + indent, is_root=False, ignore=ignore)
+
+            if files:
+                output += f"{prefix}  {', '.join(files)}\n"
+
+        elif files:
+            output += f": {', '.join(files)}\n"
+        else:
+            output += '\n'
+
+    return output
+
+
+def build_directory_tree_with_descriptions(path, prefix="", ignore=None, is_last=False, files=None):
     """Build the directory tree structure in tree-like format.
 
     Args:
@@ -297,17 +343,19 @@ def build_directory_tree(path, prefix="", ignore=None, is_last=False, files=None
 
     if os.path.isdir(path):
         # It's a directory, add its name to the output and then recurse into it
-        output += prefix + "|-- " + os.path.basename(path) + ((' - ' + files[os.path.basename(path)].description + ' ' if files and os.path.basename(path) in files and add_descriptions else '')) + "/\n"
+        output += prefix + "|-- " + os.path.basename(path) + \
+                  ((' - ' + files[os.path.basename(path)].description + ' ' if files and os.path.basename(path) in files else '')) + "/\n"
 
         # List items in the directory
         items = os.listdir(path)
         for index, item in enumerate(items):
             item_path = os.path.join(path, item)
-            output += build_directory_tree(item_path, prefix + indent, ignore, index == len(items) - 1, files, add_descriptions)
+            output += build_directory_tree_with_descriptions(item_path, prefix + indent, ignore, index == len(items) - 1, files)
 
     else:
         # It's a file, add its name to the output
-        output += prefix + "|-- " + os.path.basename(path) + ((' - ' + files[os.path.basename(path)].description + ' ' if files and os.path.basename(path) in files and add_descriptions else '')) + "\n"
+        output += prefix + "|-- " + os.path.basename(path) + \
+                  ((' - ' + files[os.path.basename(path)].description + ' ' if files and os.path.basename(path) in files else '')) + "\n"
 
     return output
 
@@ -339,7 +387,7 @@ def execute_command_and_check_cli_response(command, timeout, convo):
 
 def run_command_until_success(convo, command,
                               timeout: Union[int, None],
-                              process_name: Union[str, None] = None,
+                              command_id: Union[str, None] = None,
                               success_message=None,
                               additional_message=None,
                               force=False,
@@ -352,7 +400,7 @@ def run_command_until_success(convo, command,
         convo (AgentConvo): The conversation object.
         command (str): The command to run.
         timeout (int): The maximum execution time in milliseconds.
-        process_name: A name for the process.
+        command_id: A name for the process.
                       If `timeout` is not provided, can be used to terminate the process.
         success_message: A message to look for in the output of the command to determine if successful or not.
         additional_message (str, optional): Additional message to include in the response.
@@ -364,7 +412,7 @@ def run_command_until_success(convo, command,
                                                         command,
                                                         timeout=timeout,
                                                         success_message=success_message,
-                                                        process_name=process_name,
+                                                        command_id=command_id,
                                                         force=force)
 
     if response is None:
@@ -384,9 +432,9 @@ def run_command_until_success(convo, command,
 
     if response != 'DONE':
         # 'NEEDS_DEBUGGING'
-        print(red('Got incorrect CLI response:'))
+        print(color_red('Got incorrect CLI response:'))
         print(cli_response)
-        print(red('-------------------'))
+        print(color_red('-------------------'))
 
         reset_branch_id = convo.save_branch()
         while True:
@@ -394,7 +442,12 @@ def run_command_until_success(convo, command,
                 # This catch is necessary to return the correct value (cli_response) to continue development function so
                 # the developer can debug the appropriate issue
                 # this snippet represents the first entry point into debugging recursion because of return_cli_response
-                return convo.agent.debugger.debug(convo, {'command': command, 'timeout': timeout})
+                return convo.agent.debugger.debug(convo, {
+                    'command': command,
+                    'timeout': timeout,
+                    'command_id': command_id,
+                    'success_message': success_message,
+                })
             except TooDeepRecursionError as e:
                 # this is only to put appropriate message in the response after TooDeepRecursionError is raised
                 raise TooDeepRecursionError(cli_response) if return_cli_response else e
