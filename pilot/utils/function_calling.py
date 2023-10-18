@@ -150,9 +150,19 @@ class JsonPrompter:
         Returns:
             str: The summary of the function, as a bullet point
         """
-        return f"- {function['name']}" + (
-            f" - {function['description']}" if "description" in function else ""
-        )
+        return '\n'.join([
+            f"# {function['name']}" + (
+                f" - {function['description']}" if "description" in function else ""
+            ),
+            'JSON schema:',
+            "```json",
+            json.dumps({
+                'name': function['name'],
+                'arguments': function["parameters"]["properties"]
+            }
+            , indent=4),
+            "```"
+        ]) + '\n'
 
     def functions_summary(self, functions: list[FunctionType]) -> str:
         """Get a summary of the functions
@@ -186,7 +196,8 @@ class JsonPrompter:
                 specified
         """
         system = (
-            "Help choose the appropriate function to call to answer the user's question."
+            "Help choose the appropriate function to call to answer the user's question. "
+            'example: {"name": "' + functions[0]['name'] + '", "arguments": {...}}'
             if function_to_call is None
             else f"Please provide a JSON object that defines the arguments for the `{function_to_call}` function to answer the user's question."
         ) + "\nThe response must contain ONLY the JSON object, with NO additional text or explanation."

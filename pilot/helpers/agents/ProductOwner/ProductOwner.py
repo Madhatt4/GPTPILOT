@@ -3,12 +3,14 @@ from utils.style import color_green_bold
 from helpers.AgentConvo import AgentConvo
 from helpers.Agent import Agent
 from logger.logger import logger
+from const.llm import MAX_QUESTIONS
 from database.database import get_app, save_progress, save_app, get_progress_steps
 from utils.utils import should_execute_step, generate_app_data, step_already_finished, clean_filename
 from utils.files import setup_workspace
 from prompts.prompts import ask_for_app_type, ask_for_main_app_definition, get_additional_info_from_openai, \
     generate_messages_from_description, ask_user
 from const.llm import END_RESPONSE
+from .function_calls import PROJECT_INCEPTION
 
 PROJECT_DESCRIPTION_STEP = 'project_description'
 USER_STORIES_STEP = 'user_stories'
@@ -18,6 +20,37 @@ USER_TASKS_STEP = 'user_tasks'
 class ProductOwner(Agent):
     def __init__(self, project):
         super().__init__('product_owner', project)
+
+    def run_inception(self):
+        convo = AgentConvo(self)
+
+        app_type = 'web app'  # self.project.args['app_type']
+        name = 'My App'  # self.project.args['name']
+        prompt = 'a web based chat app'
+        question_count = 0
+        convo.high_level_step = 'inception'
+        self.project.args['name'] = 'inception'
+        self.project.set_root_path(setup_workspace(self.project.args))
+
+        response = convo.send_message('high_level_questions/inception.prompt',
+                                      {'app_type': app_type, 'name': name, 'prompt': prompt},
+                                      function_calls=PROJECT_INCEPTION)
+
+        # TODO: merge with AngentConvo.continuous_conversation()?
+        while question_count < MAX_QUESTIONS:
+            user_message = ask_user(self.project, response['text'])
+            logger.info('\n>>>>>>>>>> User Message >>>>>>>>>>\n%s\n>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>', user_message)
+            convo.messages.append({'role': 'user', 'content': user_message})
+
+            if response['type'] == 'question':
+                question_count += 1
+            if question_count >= MAX_QUESTIONS:
+                break
+
+            response = convo.send_message(None, None, function_calls=PROJECT_INCEPTION)
+
+
+        return response
 
     def get_project_description(self):
         print(json.dumps({
