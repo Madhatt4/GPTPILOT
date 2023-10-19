@@ -39,7 +39,7 @@ def add_function_calls_to_request(gpt_data, function_calls: Union[FunctionCallSe
         return
 
     model: str = gpt_data['model']
-    is_instruct = 'llama' in model or 'anthropic' in model
+    is_instruct = 'llama' in model or 'anthropic' in model or 'instruct' in model
 
     gpt_data['functions'] = function_calls['definitions']
 
@@ -196,7 +196,7 @@ class JsonPrompter:
                 specified
         """
         system = (
-            "Help choose the appropriate function to call to answer the user's question. "
+            "Choose the appropriate function to call. "
             'example: {"name": "' + functions[0]['name'] + '", "arguments": {...}}'
             if function_to_call is None
             else f"Please provide a JSON object that defines the arguments for the `{function_to_call}` function to answer the user's question."
