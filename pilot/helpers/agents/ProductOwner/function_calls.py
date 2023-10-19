@@ -9,6 +9,14 @@ PROJECT_INCEPTION = {
                 'type': 'object',
                 'description': '...',
                 'properties': {
+                    # 'thoughts': {
+                    #     'type': 'string',
+                    #     'description': 'Any thoughts you have about the project so far and why you need to ask this question',
+                    # },
+                    # 'reasoning': {
+                    #     'type': 'string',
+                    #     'description': 'Your reasoning for asking this question',
+                    # },
                     'type': {
                         'type': 'string',
                         'description': 'Set to `question` if you, the large language model, are asking a question to the user. '

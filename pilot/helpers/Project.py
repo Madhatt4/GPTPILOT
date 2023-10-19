@@ -76,6 +76,7 @@ class Project:
         Start the project.
         """
         self.project_manager = ProductOwner(self)
+        self.project_manager.run_inception()
         self.project_manager.get_project_description()
 
         self.project_manager.get_user_stories()
