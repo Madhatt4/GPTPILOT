@@ -3,5 +3,8 @@ I want you to create the {{ app_type }} (let's call it "{{ name }}") that can be
 {{ prompt }}
 ```
 
-I want you to act as if you're doing a project inception meeting, think from a high level perspective and ask if anything is unclear in regards to the description that I've given to you. We will follow the agile development methodology, so we will start with an MVP (Minimal Viable Product) and then we will iterate on it.
-I want you to ask as few questions as possible to be able to define 80%-90% of the requirements before documenting the high level project summary and moving on to breaking the project down into user stories.
+I want you to act as if you're doing a project inception meeting, think from a high level perspective and ask if anything is unclear in regards to what is required to develop a software solution based on the description that I've given to you. We will follow the agile development methodology, so we will start with an MVP (Minimal Viable Product) and then we will iterate on it.
+I want you to ask as few questions as possible, so make sure to ask the most important questions first.
+Within the first 5 questions, you should be able to define 80%-90% of the requirements before documenting the high level project summary and moving on to breaking the project down into user stories.
+
+{{single_question}}

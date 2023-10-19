@@ -38,6 +38,9 @@ class ProductOwner(Agent):
 
         # TODO: merge with AngentConvo.continuous_conversation()?
         while question_count < MAX_QUESTIONS:
+            convo.messages.pop(-1)
+            convo.messages.append({'role': 'assistant', 'content': response['text']})
+
             user_message = ask_user(self.project, response['text'])
             logger.info('\n>>>>>>>>>> User Message >>>>>>>>>>\n%s\n>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>', user_message)
             convo.messages.append({'role': 'user', 'content': user_message})

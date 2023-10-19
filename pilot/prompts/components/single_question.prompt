@@ -19,6 +19,3 @@ Bad: "Thank you for that information. My next question is: Should A be bigger th
 
 Good: "Do we need to prioritize X over Y?"
 Bad: "Based on what you said earlier, do we need to prioritize X over Y?"
-
-Good: "{{END_RESPONSE}}"
-Bad: " {{END_RESPONSE}}  ", "EVERYTHING\_CLEAR"

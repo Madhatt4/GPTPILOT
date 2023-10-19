@@ -11,14 +11,14 @@ PROJECT_INCEPTION = {
                 'properties': {
                     'type': {
                         'type': 'string',
-                        'description': 'Set to `question` if you are asking a question to the user '
-                                       'or `response` if you are responding to a question asked by the user. '
+                        'description': 'Set to `question` if you, the large language model, are asking a question to the user. '
+                                       'Only set to `response` if the user has just asked a question to which you are responding. '
                                        'If everything is clear and you have no more questions, set this to `EVERYTHING_CLEAR`.',
                         'enum': ['question', 'response', 'EVERYTHING_CLEAR'],
                     },
                     'text': {
                         'type': 'string',
-                        'description': 'The question or response to user. Only required if `type` is question or response.'
+                        'description': 'A new question or a response to a question from the user. Required if `type` is `question` or `response`.'
                     },
                 },
                 'required': ['type']
