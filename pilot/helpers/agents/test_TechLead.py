@@ -10,22 +10,15 @@ from helpers.agents.TechLead import TechLead, DEVELOPMENT_PLANNING_STEP
 from helpers.Project import Project
 from test.test_utils import assert_non_empty_string
 from test.mock_questionary import MockQuestionary
+from database.models.files import File
+from helpers.test_Project import create_project
 
 
 class TestTechLead:
     def setup_method(self):
         builtins.print, ipc_client_instance = get_custom_print({})
 
-        name = 'TestTechLead'
-        self.project = Project({
-                'app_id': 'test-tech-lead',
-                'name': name,
-                'app_type': ''
-            },
-            name=name,
-            architecture=[],
-            user_stories=[]
-        )
+        self.project = create_project('TestTechLead')
 
         self.project.set_root_path(os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)),
                                                               '../../../workspace/TestTechLead')))
@@ -48,22 +41,36 @@ The development process will include the creation of user stories and tasks, bas
         ]
         self.project.architecture = ['Node.js', 'Socket.io', 'Bootstrap', 'JavaScript', 'HTML5', 'CSS3']
         self.project.current_step = DEVELOPMENT_PLANNING_STEP
+        self.tech_lead = TechLead(self.project)
 
     @pytest.mark.uses_tokens
     @patch('helpers.AgentConvo.get_saved_development_step', return_value=None)
     @patch('helpers.agents.TechLead.save_progress', return_value=None)
     @patch('helpers.agents.TechLead.get_progress_steps', return_value=None)
     def test_create_development_plan(self, mock_get_saved_step, mock_save_progress, mock_get_progress_steps):
-        self.techLead = TechLead(self.project)
-
         mock_questionary = MockQuestionary(['', '', 'no'])
 
         with patch('utils.questionary.questionary', mock_questionary):
             # When
-            development_plan = self.techLead.create_development_plan()
+            development_plan = self.tech_lead.create_development_plan()
 
             # Then
             assert development_plan is not None
             assert_non_empty_string(development_plan[0]['description'])
             assert_non_empty_string(development_plan[0]['programmatic_goal'])
             assert_non_empty_string(development_plan[0]['user_review_goal'])
+
+    @pytest.mark.uses_tokens
+    @patch('helpers.AgentConvo.get_saved_development_step', return_value=None)
+    @patch('helpers.agents.TechLead.save_progress', return_value=None)
+    @patch('helpers.agents.TechLead.get_progress_steps', return_value=None)
+    @patch.object(File, 'insert')
+    def test_create_project_scripts(self, mock_insert, mock_get_saved_step, mock_save_progress, mock_get_progress_steps):
+        # Given
+        self.project.architecture = ['Node.js', 'Socket.io', 'Bootstrap', 'JavaScript', 'HTML5', 'CSS3']
+
+        # When
+        self.tech_lead.create_project_scripts()
+
+        # Then
+        pass
