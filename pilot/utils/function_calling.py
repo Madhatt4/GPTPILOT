@@ -159,8 +159,7 @@ class JsonPrompter:
             json.dumps({
                 'name': function['name'],
                 'arguments': function["parameters"]["properties"]
-            }
-            , indent=4),
+            }, indent=4),
             "```"
         ]) + '\n'
 
@@ -200,7 +199,7 @@ class JsonPrompter:
             'example: {"name": "' + functions[0]['name'] + '", "arguments": {...}}'
             if function_to_call is None
             else f"Please provide a JSON object that defines the arguments for the `{function_to_call}` function to answer the user's question."
-        ) + "\nThe response must contain ONLY the JSON object, with NO additional text or explanation."
+        ) + "\nYour response must be a JSON object only. Do not include any introductory or concluding sentences."
 
         data = (
             self.function_data(functions, function_to_call)

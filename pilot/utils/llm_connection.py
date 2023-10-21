@@ -444,16 +444,27 @@ def assert_json_response(response: str, or_fail=True) -> bool:
 
 
 def clean_json_response(response: str) -> str:
-    response = re.sub(r'^.*```json\s*', '', response, flags=re.DOTALL)
+    braces = re.search(r'\{.*}', response, flags=re.DOTALL)
+    if braces is None:
+        braces = re.search(r'\[.*]', response, flags=re.DOTALL)
+
+    if braces is not None:
+        response = braces.group(0)
+    else:
+        logger.warning('Unable to find JSON braces in response: %s', response)
+        # This probably isn't going to help in this scenario...
+        response = re.sub(r'^.*```json\s*', '', response, flags=re.DOTALL).strip('` \n')
+
     response = re.sub(r': ?True(,)?$', r':true\1', response, flags=re.MULTILINE)
     response = re.sub(r': ?False(,)?$', r':false\1', response, flags=re.MULTILINE)
-    return response.strip('` \n')
+    return response
 
 
-def assert_json_schema(response: str, functions: list[FunctionType]) -> True:
+def assert_json_schema(response: str, functions: list[FunctionType]) -> str:
+    parsed = json.loads(response)
+
     for function in functions:
         schema = function['parameters']
-        parsed = json.loads(response)
         # If there are multiple functions, check if the response provides matching `name` with `arguments`
         if len(functions) > 1 and 'name' in parsed and 'arguments' in parsed:
             if parsed['name'] == function['name']:
