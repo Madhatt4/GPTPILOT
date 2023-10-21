@@ -82,26 +82,33 @@ def terminate_running_processes():
         terminate_process(running_processes[command_id][1], command_id)
 
 
+def term_proc_windows(pid: int):
+   try:
+       subprocess.run(["taskkill", "/F", "/T", "/PID", str(pid)])
+   except subprocess.CalledProcessError as e:
+       logger.error(f'Error while terminating process: {e}')
+
+
+def term_proc_unix_like(pid: int):
+   try:
+       os.killpg(pid, signal.SIGKILL)
+   except OSError as e:
+       logger.error(f'Error while terminating process: {e}')
+
+
 def terminate_process(pid: int, name=None) -> None:
-    if name is None:
-        logger.info('Terminating process %s', pid)
-    else:
-        logger.info('Terminating process "%s" (pid: %s)', name, pid)
+   if name is None:
+       name = ''
+   logger.info('Terminating process "%s" (pid: %s)', name, pid)
 
-    if platform.system() == "Windows":
-        try:
-            subprocess.run(["taskkill", "/F", "/T", "/PID", str(pid)])
-        except subprocess.CalledProcessError as e:
-            logger.error(f'Error while terminating process: {e}')
-    else:  # Unix-like systems
-        try:
-            os.killpg(pid, signal.SIGKILL)
-        except OSError as e:
-            logger.error(f'Error while terminating process: {e}')
+   if platform.system() == "Windows":
+       term_proc_windows(pid)
+   else:  # Unix-like systems
+       term_proc_unix_like(pid)
 
-    for command_id in list(running_processes.keys()):
-        if running_processes[command_id][1] == pid:
-            del running_processes[command_id]
+   for command_id in list(running_processes.keys()):
+       if running_processes[command_id][1] == pid:
+           del running_processes[command_id]
 
 
 def execute_command(project, command, timeout=None, success_message=None, command_id: str = None, force=False) \
@@ -116,12 +123,12 @@ def execute_command(project, command, timeout=None, success_message=None, comman
         success_message: A message to look for in the output of the command to determine if successful or not.
         command_id (str, optional): A unique identifier assigned by the LLM, can be used to terminate the process.
         force (bool, optional): Whether to execute the command without confirmation. Default is False.
-
     Returns:
         cli_response (str): The command output
-                            or: '', 'DONE' if user answered 'no' or 'skip'
-        llm_response (str): 'DONE' if 'no', 'skip' or `success_message` matched.
-                            Otherwise `None` - caller should send `cli_response` to LLM
+                            or: `None` if user did not authorise the command to run
+        done_or_error_response (str): 'DONE' if 'no', 'skip' or `success_message` matched.
+                            Otherwise, if `cli_response` is None, user's response to "Can I executed".
+                            If `cli_response` not None: 'was interrupted by user', 'timed out' or `None` - caller should send `cli_response` to LLM
         exit_code (int): The exit code of the process.
     """
     if timeout is not None:
@@ -142,24 +149,19 @@ def execute_command(project, command, timeout=None, success_message=None, comman
             question += '?'
 
         answer = ask_user(project, question, False, hint='If yes, just press ENTER')
-
-        # TODO: I think AutoGPT allows other feedback here, like:
-        #       "That's not going to work, let's do X instead"
-        #       We don't explicitly make "no" or "skip" options to the user
-        #       see https://github.com/Pythagora-io/gpt-pilot/issues/122
-        #       https://github.com/Pythagora-io/gpt-pilot/issues/198
-        #       https://github.com/Pythagora-io/gpt-pilot/issues/43#issuecomment-1756352056
-        #       This may require exiting the list of steps early.
-        # ...or .confirm(question, default='yes').ask()  https://questionary.readthedocs.io/en/stable/pages/types.html#confirmation
+        # TODO can we use .confirm(question, default='yes').ask()  https://questionary.readthedocs.io/en/stable/pages/types.html#confirmation
         print('answer: ' + answer)
-        if answer.lower().startswith('no'):
-            return '', 'DONE', None
-        elif answer == 'skip':
-            return '', 'DONE', None
+        if answer.lower() in ['no', 'skip']:
+            return None, 'DONE', None
+        elif answer.lower() not in ['', 'yes', 'ok', 'okay', 'sure']:
+            # "That's not going to work, let's do X instead"
+            #       https://github.com/Pythagora-io/gpt-pilot/issues/198
+            #       https://github.com/Pythagora-io/gpt-pilot/issues/43#issuecomment-1756352056
+            # TODO: https://github.com/Pythagora-io/gpt-pilot/issues/122
+            return None, answer, None
 
     # TODO when a shell built-in commands (like cd or source) is executed, the output is not captured properly - this will need to be changed at some point
-    # TODO: Windows support
-    if "cd " in command or "source " in command:
+    if platform.system() != 'Windows' and ("cd " in command or "source " in command):
         command = "bash -c '" + command + "'"
 
     project.command_runs_count += 1
@@ -171,7 +173,7 @@ def execute_command(project, command, timeout=None, success_message=None, comman
         return command_run.cli_response, None, None
 
     return_value = None
-    was_success = None
+    done_or_error_response = None
 
     q_stderr = queue.Queue()
     q = queue.Queue()
@@ -179,6 +181,7 @@ def execute_command(project, command, timeout=None, success_message=None, comman
 
     if command_id is not None:
         terminate_named_process(command_id)
+        # TODO: We want to be able to send the initial stdout/err to the LLM, but it would also be handy to log ongoing output to a log file, named after `command_id`. Terminating an existing process with the same ID should reset the log file
         running_processes[command_id] = (command, process.pid)
 
     output = ''
@@ -200,6 +203,8 @@ def execute_command(project, command, timeout=None, success_message=None, comman
             # Check if process has finished
             if process.poll() is not None:
                 logger.info('process exited with return code: %d', process.returncode)
+                if command_id is not None:
+                    del running_processes[command_id]
                 # Get remaining lines from the queue
                 time.sleep(0.1)  # TODO this shouldn't be used
                 while not q.empty():
@@ -231,7 +236,7 @@ def execute_command(project, command, timeout=None, success_message=None, comman
                 logger.info('CLI OUTPUT: ' + line)
                 if success_message is not None and success_message in line:
                     logger.info('Success message found: %s', success_message)
-                    was_success = True
+                    done_or_error_response = 'DONE'
                     break
 
             # Read stderr
@@ -249,12 +254,15 @@ def execute_command(project, command, timeout=None, success_message=None, comman
         if isinstance(e, KeyboardInterrupt):
             print('\nCTRL+C detected. Stopping command execution...')
             logger.info('CTRL+C detected. Stopping command execution...')
+            done_or_error_response = 'was interrupted by user'
         else:
             print('\nTimeout detected. Stopping command execution...')
             logger.warn('Timeout detected. Stopping command execution...')
+            done_or_error_response = f'took longer than {timeout}ms so I killed it'
 
-        was_success = False
         terminate_process(process.pid)
+        # update the returncode
+        process.poll()
 
     elapsed_time = time.time() - start_time
     logger.info(f'`{command}` took {round(elapsed_time * 1000)}ms to execute.')
@@ -271,7 +279,7 @@ def execute_command(project, command, timeout=None, success_message=None, comman
 
     save_command_run(project, command, return_value)
 
-    return return_value, 'DONE' if was_success else None, process.returncode
+    return return_value, done_or_error_response, process.returncode
 
 
 def build_directory_tree(path, prefix='', is_root=True, ignore=None):
@@ -320,69 +328,73 @@ def build_directory_tree(path, prefix='', is_root=True, ignore=None):
     return output
 
 
+def res_for_build_directory_tree(path, files=None):
+   return ' - ' + files[os.path.basename(path)].description + ' ' if files and os.path.basename(path) in files else ''
+
+
 def build_directory_tree_with_descriptions(path, prefix="", ignore=None, is_last=False, files=None):
-    """Build the directory tree structure in tree-like format.
-
-    Args:
-    - path: The starting directory path.
-    - prefix: Prefix for the current item, used for recursion.
-    - ignore: List of directory names to ignore.
-    - is_last: Flag to indicate if the current item is the last in its parent directory.
-
-    Returns:
-    - A string representation of the directory tree.
-    """
-    if ignore is None:
-        ignore = []
-
-    if os.path.basename(path) in ignore:
-        return ""
-
-    output = ""
-    indent = '|   ' if not is_last else '    '
-
-    if os.path.isdir(path):
-        # It's a directory, add its name to the output and then recurse into it
-        output += prefix + "|-- " + os.path.basename(path) + \
-                  ((' - ' + files[os.path.basename(path)].description + ' ' if files and os.path.basename(path) in files else '')) + "/\n"
-
-        # List items in the directory
-        items = os.listdir(path)
-        for index, item in enumerate(items):
-            item_path = os.path.join(path, item)
-            output += build_directory_tree_with_descriptions(item_path, prefix + indent, ignore, index == len(items) - 1, files)
-
-    else:
-        # It's a file, add its name to the output
-        output += prefix + "|-- " + os.path.basename(path) + \
-                  ((' - ' + files[os.path.basename(path)].description + ' ' if files and os.path.basename(path) in files else '')) + "\n"
-
-    return output
+   """Build the directory tree structure in tree-like format.
+   Args:
+   - path: The starting directory path.
+   - prefix: Prefix for the current item, used for recursion.
+   - ignore: List of directory names to ignore.
+   - is_last: Flag to indicate if the current item is the last in its parent directory.
+   Returns:
+   - A string representation of the directory tree.
+   """
+   ignore |= []
+   if os.path.basename(path) in ignore:
+       return ""
+   output = ""
+   indent = '|   ' if not is_last else '    '
+   # It's a directory, add its name to the output and then recurse into it
+   output += prefix + "|-- " + os.path.basename(path) + res_for_build_directory_tree(path, files) + "/\n"
+   if os.path.isdir(path):
+       # List items in the directory
+       items = os.listdir(path)
+       for index, item in enumerate(items):
+           item_path = os.path.join(path, item)
+           output += build_directory_tree(item_path, prefix + indent, ignore, index == len(items) - 1, files)
+   return output
 
 
-def execute_command_and_check_cli_response(command, timeout, convo):
+def execute_command_and_check_cli_response(convo, command: dict):
     """
     Execute a command and check its CLI response.
 
     Args:
-        command (str): The command to run.
-        timeout (int): The maximum execution time in milliseconds.
         convo (AgentConvo): The conversation object.
+        command (dict):
+          ['command'] (str): The command to run.
+          ['timeout'] (int): The maximum execution time in milliseconds.
+
 
     Returns:
         tuple: A tuple containing the CLI response and the agent's response.
             - cli_response (str): The command output.
-            - llm_response (str): 'DONE' or 'NEEDS_DEBUGGING'
+            - response (str): 'DONE' or 'NEEDS_DEBUGGING'.
+                If `cli_response` is None, user's response to "Can I execute...".
     """
     # TODO: Prompt mentions `command` could be `INSTALLED` or `NOT_INSTALLED`, where is this handled?
-    cli_response, llm_response, exit_code = execute_command(convo.agent.project, command, timeout=timeout)
-    if llm_response is None:
-        llm_response = convo.send_message('dev_ops/ran_command.prompt',
-            {
-                'cli_response': cli_response,
-                'command': command
-            })
-    return cli_response, llm_response
+    command_id = command['command_id'] if 'command_id' in command else None
+    cli_response, response, exit_code = execute_command(convo.agent.project,
+                                                            command['command'],
+                                                            timeout=command['timeout'],
+                                                            command_id=command_id)
+    if cli_response is not None:
+        if exit_code is None:
+            response = 'DONE'
+        elif response != 'DONE':
+            # "I ran the command `{{command}}` -> {{ exit_code }}, {{ error_response }}, output: {{ cli_response }
+            # respond with 'DONE' or 'NEEDS_DEBUGGING'"
+            response = convo.send_message('dev_ops/ran_command.prompt',
+                {
+                    'cli_response': cli_response,
+                    'error_response': response,
+                    'command': command['command'],
+                    'exit_code': exit_code,
+                })
+    return cli_response, response
 
 
 def run_command_until_success(convo, command,
@@ -392,6 +404,7 @@ def run_command_until_success(convo, command,
                               additional_message=None,
                               force=False,
                               return_cli_response=False,
+                              success_with_cli_response=False,
                               is_root_task=False):
     """
     Run a command until it succeeds or reaches a timeout.
@@ -403,10 +416,17 @@ def run_command_until_success(convo, command,
         command_id: A name for the process.
                       If `timeout` is not provided, can be used to terminate the process.
         success_message: A message to look for in the output of the command to determine if successful or not.
-        additional_message (str, optional): Additional message to include in the response.
+        additional_message (str, optional): Additional message to include in the "I ran the command..." prompt.
         force (bool, optional): Whether to execute the command without confirmation. Default is False.
         return_cli_response (bool, optional): If True, may raise TooDeepRecursionError(cli_response)
+        success_with_cli_response (bool, optional): If True, simply send the cli_response back to the caller without checking with LLM.
+                                                    The LLM has asked to see the output and may update the task step list.
         is_root_task (bool, optional): If True and TokenLimitError is raised, will call `convo.load_branch(reset_branch_id)`
+
+    Returns:
+        - 'success': bool,
+        - 'cli_response': ```stdout: <stdout> stderr: <stderr>```
+        - 'user_input': `None` or user's objection to running the command
     """
     cli_response, response, exit_code = execute_command(convo.agent.project,
                                                         command,
@@ -415,18 +435,26 @@ def run_command_until_success(convo, command,
                                                         command_id=command_id,
                                                         force=force)
 
-    if response is None:
-        logger.info(f'`{command}` exit code: {exit_code}')
-        if exit_code is None:
+    if success_with_cli_response and cli_response is not None:
+        return {'success': True, 'cli_response': cli_response}
+
+    if cli_response is None and response != 'DONE':
+        return {'success': False, 'user_input': response}
+
+    if cli_response is not None:
+        logger.info(f'`{command}` ("{command_id}") exit code: {exit_code}')
+        if exit_code is None and command_id is not None:
+            # process is still running
             response = 'DONE'
-        else:
+        elif response != 'DONE':
             # "I ran the command and the output was... respond with 'DONE' or 'NEEDS_DEBUGGING'"
             response = convo.send_message('dev_ops/ran_command.prompt',
                 {
                     'cli_response': cli_response,
+                    'error_response': response,
                     'command': command,
                     'additional_message': additional_message,
-                    'exit_code': exit_code
+                    'exit_code': exit_code,
                 })
             logger.debug(f'LLM response: {response}')
 
@@ -442,12 +470,13 @@ def run_command_until_success(convo, command,
                 # This catch is necessary to return the correct value (cli_response) to continue development function so
                 # the developer can debug the appropriate issue
                 # this snippet represents the first entry point into debugging recursion because of return_cli_response
-                return convo.agent.debugger.debug(convo, {
+                success = convo.agent.debugger.debug(convo, {
                     'command': command,
                     'timeout': timeout,
                     'command_id': command_id,
                     'success_message': success_message,
                 })
+                return {'success': success, 'cli_response': cli_response}
             except TooDeepRecursionError as e:
                 # this is only to put appropriate message in the response after TooDeepRecursionError is raised
                 raise TooDeepRecursionError(cli_response) if return_cli_response else e
@@ -457,4 +486,4 @@ def run_command_until_success(convo, command,
                 else:
                     raise e
     else:
-        return { 'success': True, 'cli_response': cli_response }
+        return {'success': True, 'cli_response': cli_response}

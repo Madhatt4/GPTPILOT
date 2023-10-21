@@ -60,7 +60,7 @@ https://github.com/Pythagora-io/gpt-pilot/assets/10895136/0495631b-511e-451b-93d
 
 
 # 🚦How to start using gpt-pilot?
-After you have Python and PostgreSQL installed, follow these steps:
+After you have Python and (optionally) PostgreSQL installed, follow these steps:
 1. `git clone https://github.com/Pythagora-io/gpt-pilot.git` (clone the repo)
 2. `cd gpt-pilot`
 3. `python -m venv pilot-env` (create a virtual environment)
@@ -77,17 +77,16 @@ After, this, you can just follow the instructions in the terminal.
 
 All generated code will be stored in the folder `workspace` inside the folder named after the app name you enter upon starting the pilot.
 
-**IMPORTANT: To run GPT Pilot, you need to have PostgreSQL set up on your machine**
-<br>
 
 ## 🐳 How to start gpt-pilot in docker?
 1. `git clone https://github.com/Pythagora-io/gpt-pilot.git` (clone the repo)
 2. Update the `docker-compose.yml` environment variables, which can be done via `docker compose config` . if you use local model, please go to [https://localai.io/basics/getting_started/](https://localai.io/basics/getting_started/) start. 
-3. run `docker compose build`. this will build a gpt-pilot container for you.
-4. run `docker compose up`.
-5. access the web terminal on `port 7681`
-6. `python db_init.py` (initialize the database)
-7. `python main.py` (start GPT Pilot)
+3. By default, GPT Pilot will read & write to `~/gpt-pilot-workspace` on your machine, you can also edit this in `docker-compose.yml`
+4. run `docker compose build`. this will build a gpt-pilot container for you.
+5. run `docker compose up`.
+6. access the web terminal on `port 7681`
+7. `python db_init.py` (initialize the database)
+8. `python main.py` (start GPT Pilot)
 
 This will start two containers, one being a new image built by the `Dockerfile` and a Postgres database. The new image also has [ttyd](https://github.com/tsl0922/ttyd) installed so that you can easily interact with gpt-pilot. Node is also installed on the image and port 3000 is exposed.
 
