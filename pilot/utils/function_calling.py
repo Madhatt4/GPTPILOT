@@ -199,7 +199,10 @@ class JsonPrompter:
             'example: {"name": "' + functions[0]['name'] + '", "arguments": {...}}'
             if function_to_call is None
             else f"I need a JSON object that defines the arguments for the `{function_to_call}` function to answer the user's question."
-        ) + "\nYour response must be a JSON object only. Do not include any introductory or concluding sentences."
+        ) + "\nYour response must be a JSON object only. Do not include any introductory or concluding sentences. " \
+            "Do not escape any underscore characters in the response. " \
+            "Note that the JSON schema/s below are NOT examples of what your response should look like, " \
+            "but a set of guidelines on how to construct your response."
 
         data = (
             self.function_data(functions, function_to_call)

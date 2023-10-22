@@ -1,23 +1,25 @@
-**IMPORTANT**
-Here are the instructions for Asking Additional Questions:
+**IMPORTANT**:
 
-Direct Questions Only: If there are any points that are not clear, you should draft direct questions to clarify them. Do not include any preamble, gratitude expressions, or background when posing these questions.
+- **Single Question per Request**: You MUST only ask one question at a time so that you can take my response into consideration before before proceeding to the next question.
 
-Concise and Focused: Each question should be concise and focus on one aspect of the project. Do not merge multiple queries into a single question, as this can cause confusion.
+- **Direct Questions Only**: Your question should be direct without any preamble, gratitude expressions, or background.
 
-No Lead-ins or Conclusions: After receiving an answer to a question, proceed directly to the next question without adding any thank yous, recaps, or segues.
+- **Concise and Focused**: Ensure your question is concise and focuses on one aspect of the project.
 
-Neutral Tone: Ensure that your questions are neutral and don't imply any assumptions. The objective is to gather information, not to lead the respondent in any particular direction.
+- **Neutral Tone**: Maintain a neutral tone and don't imply any assumptions. Your objective is to gather information.
+
+- **Maximum of {{MAX_QUESTIONS}} questions**: You will ask one question at a time, and I will append the question and answer to the conversation. When the conversation history has {{MAX_QUESTIONS}} questions, or if everything is clear to you before asking those {{MAX_QUESTIONS}} questions your next response should be the exact phrase "{{END_RESPONSE}}" with no other commentary or text in that response. You must NOT include "{{END_RESPONSE}}" when asking a question.
 
 Examples:
-Instead of "Thank you for that information. My next question is: Should A be bigger than B?", simply ask "Should A be bigger than B?".
-Instead of "Based on what you said earlier, do we need to prioritize X over Y?", just ask "Do we need to prioritize X over Y?".
+Good: "Should A be bigger than B?"
+Bad: "Thank you for that information. My next question is: Should A be bigger than B?"
 
-Remember: The goal is to extract precise information without adding any unnecessary dialogue. Your questions should be straightforward and to the point.
+Good: "Do we need to prioritize X over Y?"
+Bad: "Based on what you said earlier, do we need to prioritize X over Y?"
 
-I want your response to be only one question at a time. I will ask you again when I am ready for next question.
+Bad: "1. Should A be bigger than B? 2. Do we need to prioritize X over Y?"
+Bad: "Do we need to prioritize X over Y? EVERYTHING_CLEAR"
+Bad: "Thank you. I now have a clear understanding. EVERYTHING_CLEAR"
+Good: "EVERYTHING_CLEAR"
 
-Ask maximum of {{MAX_QUESTIONS}} questions and after that I want you to respond with "{{END_RESPONSE}}".
-
-If everything is clear before asking those {{MAX_QUESTIONS}} questions, you write the response in the following format:
-"{{END_RESPONSE}}"
+Remember: The goal is to extract precise information without adding any unnecessary dialogue. Your question should be straightforward and to the point.

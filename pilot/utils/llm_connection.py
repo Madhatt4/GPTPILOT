@@ -457,6 +457,7 @@ def clean_json_response(response: str) -> str:
         # This probably isn't going to help in this scenario...
         response = re.sub(r'^.*```json\s*', '', response, flags=re.DOTALL).strip('` \n')
 
+    response = response.replace('\\_', '_')  # Mistral7B likes to escape underscores
     response = re.sub(r': ?True(,)?$', r':true\1', response, flags=re.MULTILINE)
     response = re.sub(r': ?False(,)?$', r':false\1', response, flags=re.MULTILINE)
     return response
