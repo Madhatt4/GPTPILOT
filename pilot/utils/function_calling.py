@@ -198,7 +198,7 @@ class JsonPrompter:
             "Choose the appropriate function to call. "
             'example: {"name": "' + functions[0]['name'] + '", "arguments": {...}}'
             if function_to_call is None
-            else f"Please provide a JSON object that defines the arguments for the `{function_to_call}` function to answer the user's question."
+            else f"I need a JSON object that defines the arguments for the `{function_to_call}` function to answer the user's question."
         ) + "\nYour response must be a JSON object only. Do not include any introductory or concluding sentences."
 
         data = (
