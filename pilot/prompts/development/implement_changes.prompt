@@ -1,26 +1,55 @@
-{{ files_list }}
+{% if standalone %}You're a senior software developer tasked with updating one file in a software project.{% endif %}
 
-Here is a description of changes for a task you're currently working on:
+You're given complete original file along with the instructions for the change. For context, you're also given all the relevant files in the project.
+{% if full_output %}
+Your task is to modify the original file using the provided instrunctions and output the new version of the original file *ENTRIRELY*, without omissions and
+comments like `// the rest of the code goes here` or similar.
+{% else %}
+Your task is to modify the original file using the provided instrunctions and output *ONLY THE MODIFICATIONS*. For each chunk of modification, output it in the following format:
+
+## Change
+
+Old:
 ```
-{{ task_description }}
+lines that are added, modified, or removed
 ```
 
-This task is broken down into steps. Please tell me the changes needed to implement the step #{{ step_index }} that is described like this:
+New:
 ```
-{{ step_description }}
+old lines are replaced with these new ones
 ```
 
-Within the file modifications, anything needs to be written by the user, add the comment in the same line as the code that starts with `// INPUT_REQUIRED {input_description}` where `input_description` is a description of what needs to be added here by the user. Just make sure that you put comments only inside files that support comments (e.g. not in JSON files)..
+If no changes are actually required, you must not output any code blocks.
 
-**IMPORTANT**
-When you think about in which file should the new code go to, always try to make files as small as possible and put code in more smaller files rather than in one big file. Whenever a file becomes too large (more than 50 lines of code) split it into smaller files.
+If adding code to the start or the end of the file, include the first/last line of the original so we
+can see where the new code should be added.
 
-**IMPORTANT**
-When you want to add a comment that tells the user to add the previous implementation at that place, make sure that the comment starts with `[OLD CODE]` and add a description of what old code should be inserted here. For example, `[OLD CODE] Login route`.
+Important: old code must be verbatim as it will be used for search-replace, including the exact indentation from the original
+code; do not add any comments or explanation. Each old code block must uniquely identify the lines that need to be replaced.
+In replacement (new) code, remember to follow the same coding style that is used in the rest of the file. Pay
+special attention to the indentation of the new code and make sure include all the required new code, without omitting anything.
+{% endif %}
+{% if standalone %}
+Existing project files:
+{% for file in files %}
+* `{{ file['path'] }}/{{ file['name'] }}`
+```
+{{ file['content'] }}
+```
 
-{% if 'code_change' in step %}
-{% for file in step['code_change'] %}
-**IMPORTANT**
-Implement changes only for the file `{{ step['code_change']['path'] }}` and no other files.
 {% endfor %}
 {% endif %}
+You need to modify file ({{ file_name }}), with current content:
+```
+{{ file_content }}
+```
+
+Here's how you need to modify this file: {{ code_changes_description }}
+{% if full_output %}
+Remember: you must output the entire new file in exactly one code block - do not omit anything, as it will be saved as-is.
+{% else %}
+Remember: each change must have both old and new code blocks. The old code block must be found verbatim in the original file.
+{% endif %}
+*IMPORTANT*: If the instructions provide hints like `# .. insert existing code here ...`, you must interpret those and insert
+relevant code from the original. DO NOT blindly copy from the examples in the instructions. NEVER omit any code that should go
+into the new block and NEVER substitute any code with comments like `// the rest of the code goes here` or similar.

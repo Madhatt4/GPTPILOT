@@ -1,10 +1,6 @@
-Ok, now, take your previous message and convert it to actionable items. An item might be a code change or a command run. When you need to change code, make sure that you put the entire content of the file in the value of `content` key even though you will likely copy and paste the most of the previous message. The commands must be able to run on a {{ os }} machine.
+Ok, now, take your previous message and convert it to actionable items (steps). An item can be either "command" (must be able to run on a {{ os }} machine), "save_file" (for creating new files files) or "modify_file" (for updating existing files).  For the "modify_file" step, you must copy all relevant information (including code examples, if any) from the previous message, so the developer can correctly implement the change.
 
 **IMPORTANT**
-Within the file modifications, anything needs to be written by the user, add the comment in the same line as the code that starts with `// INPUT_REQUIRED {input_description}` where `input_description` is a description of what needs to be added here by the user. Just make sure that you put comments only inside files that support comments (e.g. not in JSON files).
+Within the file modifications, anything needs to be written by the user, add the comment in the same line as the code that starts with `// INPUT_REQUIRED {input_description}` where `input_description` is a description of what needs to be added here by the user. Just make sure that you put comments only inside files that support comments (e.g. not in JSON files), and only if the user input is really required for the code to get working. If the user input is not required, just add the code without the comment.
 
-**IMPORTANT**
-When you want to add a comment that tells the user to add the previous implementation at that place, make sure that the comment starts with `[OLD CODE]` and add a description of what old code should be inserted here. For example, `[OLD CODE] Login route`.
-
-**IMPORTANT**
-When you think about in which file should the new code go to, always try to make files as small as possible and put code in more smaller files rather than in one big file. Whenever a file becomes too large (more than 50 lines of code) split it into smaller files.
+Remember: you must provide all the information (context) for file modification steps that you thought of in the previous message, so that the developer can correctly implement your changes. This is very important.

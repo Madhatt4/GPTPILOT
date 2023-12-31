@@ -1,11 +1,15 @@
 # main.py
-from __future__ import print_function, unicode_literals
 import builtins
 import os
 
 import sys
 import traceback
-from dotenv import load_dotenv
+
+try:
+    from dotenv import load_dotenv
+except ImportError:
+    raise RuntimeError('Python environment for GPT Pilot is not completely set up: required package "python-dotenv" is missing.') from None
+
 load_dotenv()
 
 from utils.style import color_red
@@ -39,16 +43,19 @@ if __name__ == "__main__":
     ask_feedback = True
     project = None
     run_exit_fn = True
+
+    args = init()
+
     try:
         # sys.argv.append('--ux-test=' + 'continue_development')
 
-        args = init()
-
         builtins.print, ipc_client_instance = get_custom_print(args)
-
 
         if '--api-key' in args:
             os.environ["OPENAI_API_KEY"] = args['--api-key']
+        if '--api-endpoint' in args:
+            os.environ["OPENAI_ENDPOINT"] = args['--api-endpoint']
+
         if '--get-created-apps-with-steps' in args:
             if ipc_client_instance is not None:
                 print({ 'db_data': get_created_apps_with_steps() }, type='info')
@@ -87,4 +94,3 @@ if __name__ == "__main__":
     finally:
         if run_exit_fn:
             exit_gpt_pilot(project, ask_feedback)
-        sys.exit(0)
